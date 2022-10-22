@@ -1,0 +1,52 @@
+name: E2E test
+
+on:
+  push:
+    branches:
+      - master
+      - wip/*
+      - feat/*
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+env:
+  CODE_COVERAGE: true
+  APP_SECRET: this-is-not-a-secret
+  JWT_ISSUER: e2e-test
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, 'skip-ci')"
+    steps:
+      - name: Checkout 🛎
+        uses: actions/checkout@v3
+      - name: Cache Next.js build 📦
+        uses: actions/cache@v3.0.5
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-next-build-${{ hashFiles('**/next.config.js') }}
+      - name: Run Cypress tests 🌲
+        uses: cypress-io/github-action@v2
+        with:
+          build: npm run build
+          start: npm start
+          wait-on: 'http://localhost:3000'
+      - name: Upload screenshots and videos on failure ⬆️
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: Cypress screenshots and videos
+          path: |
+            cypress/screenshots
+            cypress/videos
+      - name: Show code coverage 📊
+        run: npx nyc report
+      - name: Upload code coverage ⬆️
+        uses: actions/upload-artifact@v3
+        with:
+          name: e2e-coverage
+          path: coverage/e2e
